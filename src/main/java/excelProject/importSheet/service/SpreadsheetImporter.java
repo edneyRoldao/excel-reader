@@ -2,6 +2,7 @@ package excelProject.importSheet.service;
 
 import excelProject.importSheet.annotation.SpreadsheetField;
 import excelProject.importSheet.annotation.SpreadsheetFieldRequired;
+import excelProject.importSheet.annotation.UnknownFieldName;
 import excelProject.importSheet.exception.SpreadsheetException;
 import excelProject.importSheet.exception.SpreadsheetFormatException;
 import excelProject.importSheet.exception.SpreadsheetMirrorFormatException;
@@ -33,10 +34,10 @@ public class SpreadsheetImporter implements ImportSpreadsheetService {
     }
 
     @Override
-    public List<SpreadsheetMirror> importSheet(Sheet sheet, Class<? extends SpreadsheetMirror> clazz) throws SpreadsheetException {
+    public List<SpreadsheetMirror> importSheet(Sheet sheet, int rowHeader, Class<? extends SpreadsheetMirror> clazz) throws SpreadsheetException {
         Field field;
         List<SpreadsheetMirror> list = new ArrayList<>();
-        Map<String, List<SpreadsheetMap>> map = createMapFromSheet(sheet);
+        Map<String, List<SpreadsheetMap>> map = createMapFromSheet(sheet, rowHeader);
 
         Set<String> keys = map.keySet();
         int rows = map.get(map.keySet().iterator().next()).size();
@@ -57,26 +58,36 @@ public class SpreadsheetImporter implements ImportSpreadsheetService {
                 SpreadsheetMap ssm = map.get(key).get(i);
                 String dataFromSheet = ssm.getValue();
 
-                String fieldName = getterOrSetterNameToClassFieldName(method);
+                if(method.isAnnotationPresent(UnknownFieldName.class)) {
+                    try {
+                        method.invoke(spreadMirrorObj, key, dataFromSheet);
 
-                try {
-                    field = clazz.getDeclaredField(fieldName);
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        String err = "Houve um erro ao tentar setar um valor na objeto que reflete a planilha a partir de um Map";
+                        throw new SpreadsheetFormatException(err);
+                    }
 
-                } catch (NoSuchFieldException e) {
-                    String err = "não foi encontrado o atributo de classe para o método: " + method.getName();
-                    throw new SpreadsheetMirrorFormatException(err);
-                }
+                } else {
+                    String fieldName = getterOrSetterNameToClassFieldName(method);
 
-                if(field.isAnnotationPresent(SpreadsheetFieldRequired.class) && dataFromSheet.isEmpty()) {
-                    spreadMirrorObj.getErrors().put(key, "campo obrigatório está vazio");
-                }
+                    try {
+                        field = clazz.getDeclaredField(fieldName);
 
-                try {
-                    method.invoke(spreadMirrorObj, dataFromSheet);
+                    } catch (NoSuchFieldException e) {
+                        String err = "não foi encontrado o atributo de classe para o método: " + method.getName();
+                        throw new SpreadsheetMirrorFormatException(err);
+                    }
 
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    String err = "Houve um erro ao tentar setar um valor na objeto que reflete a planilha a partir de um Map";
-                    throw new SpreadsheetFormatException(err);
+                    if(field.isAnnotationPresent(SpreadsheetFieldRequired.class) && dataFromSheet.isEmpty())
+                        spreadMirrorObj.getErrors().put(key, "campo obrigatório está vazio");
+
+                    try {
+                        method.invoke(spreadMirrorObj, dataFromSheet);
+
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        String err = "Houve um erro ao tentar setar um valor na objeto que reflete a planilha a partir de um Map";
+                        throw new SpreadsheetFormatException(err);
+                    }
                 }
             }
 
@@ -87,8 +98,8 @@ public class SpreadsheetImporter implements ImportSpreadsheetService {
         return list;
     }
 
-    private Map<String, List<SpreadsheetMap>> createMapFromSheet(Sheet sheet) throws SpreadsheetFormatException {
-        if(isFirstRowEmpty(sheet))
+    private Map<String, List<SpreadsheetMap>> createMapFromSheet(Sheet sheet, int rowHeader) throws SpreadsheetFormatException {
+        if(isRowHeaderEmpty(sheet, rowHeader))
             throw new SpreadsheetFormatException("O cabeçalho está vazio.");
 
         if(isThereColumnsEmptyBetweenColumnsFulfilled(sheet))
@@ -132,7 +143,12 @@ public class SpreadsheetImporter implements ImportSpreadsheetService {
     }
 
     private Method findSetMethodByMapKey(Class<?> clazz, String key) throws SpreadsheetMirrorFormatException {
+        Method method = null;
+
         for(Method m : clazz.getDeclaredMethods()) {
+            if(m.isAnnotationPresent(UnknownFieldName.class))
+                method = m;
+
             if(isNotSetterMethod(m))
                 continue;
 
@@ -169,10 +185,7 @@ public class SpreadsheetImporter implements ImportSpreadsheetService {
                 return m;
         }
 
-        String err = "Não foi encontrado nenhum método set compatível para a columa: " + key +
-                     ". Verifique se existe algum atributo de classe no objeto que guarda os" +
-                     " dados da planilha que não seja do tipo java.lang.String.";
-        throw new SpreadsheetMirrorFormatException(err);
+        return method;
     }
 
 }

@@ -23,7 +23,7 @@ public class Test {
 		Sheet sheet = workbook.getSheetAt(0);
 		ImportSpreadsheetService service = new SpreadsheetImporter();
 		
-		List<SpreadsheetMirror> ls = service.importSheet(sheet, NewProductSheet.class);
+		List<SpreadsheetMirror> ls = service.importSheet(sheet, 0, NewProductSheet.class);
 
 		ls.forEach(ssm -> System.out.println(( ssm.toString())));
 		System.out.println("total linhas: " + ls.size());

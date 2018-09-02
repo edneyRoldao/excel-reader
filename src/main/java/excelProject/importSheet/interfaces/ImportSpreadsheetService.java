@@ -15,7 +15,7 @@ import java.util.List;
  */
 public interface ImportSpreadsheetService {
 
-    List<SpreadsheetMirror> importSheet(Sheet sheet, Class<? extends  SpreadsheetMirror> clazz) throws SpreadsheetException;
+    List<SpreadsheetMirror> importSheet(Sheet sheet, int rowHeader, Class<? extends  SpreadsheetMirror> clazz) throws SpreadsheetException;
 
 
 }

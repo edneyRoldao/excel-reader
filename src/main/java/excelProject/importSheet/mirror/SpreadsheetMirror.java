@@ -1,10 +1,14 @@
 package excelProject.importSheet.mirror;
 
+import excelProject.importSheet.annotation.UnknownFieldName;
+import excelProject.importSheet.model.UnknownField;
 import excelProject.importSheet.util.ImporterSheetUtil;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,13 +22,24 @@ import java.util.Map;
 public abstract class SpreadsheetMirror {
 
     private Map<String, String> errors;
+    private List<UnknownField> unknownFieldsFromColumnHeader;
 
     public SpreadsheetMirror() {
         errors = new HashMap<>();
+        unknownFieldsFromColumnHeader = new ArrayList<>();
     }
 
     public final Map<String, String> getErrors() {
         return errors;
+    }
+
+    public final List<UnknownField> getUnknownFieldsFromColumnHeader() {
+        return unknownFieldsFromColumnHeader;
+    }
+
+    @UnknownFieldName
+    public void addUnknownField(String columnName, String columnValue) {
+        unknownFieldsFromColumnHeader.add(new UnknownField(columnName, columnValue));
     }
 
     public boolean isSpreadsheetObjEmpty() {

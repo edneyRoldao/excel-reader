@@ -44,8 +44,8 @@ public class CreateMapFromSheetUtil {
      * @param sheet a planilha
      * @return verifica se o header da planilha está vazio.
      */
-    public static boolean isFirstRowEmpty(Sheet sheet) {
-        Row row = sheet.getRow(0);
+    public static boolean isRowHeaderEmpty(Sheet sheet, int header) {
+        Row row = sheet.getRow(header);
 
         if(row == null || row.getPhysicalNumberOfCells() == 0)
             return true;
